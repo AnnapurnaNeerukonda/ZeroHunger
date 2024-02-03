@@ -22,12 +22,13 @@ app.use(cors())
 
 app.post('/register', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password,username} = req.body;
     const hashedPassword = await bcrypt.hash(password, 15);
 
     const userRecord = await admin.auth().createUser({
       email,
       password: hashedPassword,
+      username
     });
 
     const userUid = userRecord.uid;
@@ -35,6 +36,7 @@ app.post('/register', async (req, res) => {
     const userData = {
       email,
       password: hashedPassword,
+      username,
       activate:false
     };
     await admin.firestore().collection('users').doc(userUid).set(userData);
@@ -174,15 +176,21 @@ app.post('/register', async (req, res) => {
       // Construct an object based on the index
       const usersObject = {};
   
-      querySnapshot.forEach((doc) => {
+      // Iterate through each document in the 'activeusers' array
+      for (const doc of querySnapshot.docs) {
         const userData = doc.data();
         const index = userData.index;
   
+        // Retrieve user details based on UID from the 'users' collection
+        const userDocRef = await usersCollectionRef.doc(userData.uid).get();
+        const username = userDocRef.exists ? userDocRef.data().username : 'Unknown';
+  
         usersObject[index] = {
           uid: userData.uid,
+          username,
           dataToStore: userData.dataToStore,
         };
-      });
+      }
   
       res.json({ activeUsers: usersObject });
     } catch (error) {
@@ -190,6 +198,41 @@ app.post('/register', async (req, res) => {
       res.status(500).json({ message: 'Internal Server Error' });
     }
   });
+  
+  // app.get('/activeusers', async (req, res) => {
+  //   try {
+  //     // Reference to the single document in the 'users' collection
+  //     const usersCollectionRef = admin.firestore().collection('users');
+  
+  //     // Reference to the 'activeusers' subcollection
+  //     const activeUsersDocRef = usersCollectionRef.doc('activeusers');
+  
+  //     // Reference to the 'activeusers' array within the subcollection
+  //     const activeUsersArrayRef = activeUsersDocRef.collection('activeusers');
+  
+  //     // Query all documents in the 'activeusers' array
+  //     const querySnapshot = await activeUsersArrayRef.get();
+  
+  //     // Construct an object based on the index
+  //     const usersObject = {};
+  
+  //     querySnapshot.forEach((doc) => {
+  //       const userData = doc.data();
+  //       const index = userData.index;
+  
+  //       usersObject[index] = {
+  //         uid: userData.uid,
+
+  //         dataToStore: userData.dataToStore,
+  //       };
+  //     });
+  
+  //     res.json({ activeUsers: usersObject });
+  //   } catch (error) {
+  //     console.error('Error in fetching active users:', error);
+  //     res.status(500).json({ message: 'Internal Server Error' });
+  //   }
+  // });
   app.post('/create-post', upload.single('image'), async (req, res) => {
     try {
       const { uid, title, description } = req.body;
@@ -205,9 +248,10 @@ app.post('/register', async (req, res) => {
         // Upload the image to Firebase Storage
         const storageRef = admin.storage().bucket().file(imageFilename);
         await storageRef.save(imageBuffer, { contentType: 'image/jpeg' });
-  
+        //console.log(storageRef,storageRef.bucket.name)
         // Get the URL of the uploaded image
-        imageUrl = `https://storage.googleapis.com/${storageRef.bucket.name}/${imageFilename}`;
+        imageUrl = `https://firebasestorage.googleapis.com/v0/b/${storageRef.bucket.name}/${imageFilename}`;
+        console.log(imageUrl)
       }
   
       // Get the current date
