@@ -198,6 +198,9 @@ app.post('/register', async (req, res) => {
       res.status(500).json({ message: 'Internal Server Error' });
     }
   });
+
+
+
   
   // app.get('/activeusers', async (req, res) => {
   //   try {
@@ -233,12 +236,12 @@ app.post('/register', async (req, res) => {
   //     res.status(500).json({ message: 'Internal Server Error' });
   //   }
   // });
+  
   app.post('/create-post', upload.single('image'), async (req, res) => {
     try {
       const { uid, title, description } = req.body;
-  
       let imageUrl = null;
-  
+
       // Check if a file is provided in the request
       if (req.file) {
         // If a file is provided, process it
@@ -248,10 +251,11 @@ app.post('/register', async (req, res) => {
         // Upload the image to Firebase Storage
         const storageRef = admin.storage().bucket().file(imageFilename);
         await storageRef.save(imageBuffer, { contentType: 'image/jpeg' });
-        //console.log(storageRef,storageRef.bucket.name)
-        // Get the URL of the uploaded image
-        imageUrl = `https://firebasestorage.googleapis.com/v0/b/${storageRef.bucket.name}/${imageFilename}`;
-        console.log(imageUrl)
+  
+        // Get the image URL
+        imageUrl = `https://firebasestorage.googleapis.com/v0/b/${storageRef.bucket.name}/o/${encodeURIComponent(
+          imageFilename
+        )}?alt=media`;
       }
   
       // Get the current date
@@ -288,7 +292,6 @@ app.post('/register', async (req, res) => {
   });
   // Update the existing get-posts route to sort posts in descending order
 // ... (other imports and configurations)
-
 app.get('/get-posts/:uid', async (req, res) => {
   try {
     const uid = req.params.uid;
@@ -303,6 +306,25 @@ app.get('/get-posts/:uid', async (req, res) => {
   }
 });
 
+// Function to get sorted posts for a specific user UID
+async function getSortedPosts(uid) {
+  try {
+    // Get the reference to the user's document
+    const userDocRef = admin.firestore().collection('userdocs').doc(uid);
+    const userDoc = await userDocRef.get();
+
+    // Get the posts array from the user's document
+    const postsArray = userDoc.exists ? userDoc.data().posts || [] : [];
+
+    // Sort posts in descending order based on the index
+    const sortedPosts = postsArray.sort((a, b) => b.index - a.index);
+
+    return sortedPosts;
+  } catch (error) {
+    console.error('Error in getSortedPosts function:', error);
+    throw error; // Rethrow the error for better error handling
+  }
+}
 // Function to get sorted posts for a specific user UID
 async function getSortedPosts(uid) {
   // Get the reference to the user's document
