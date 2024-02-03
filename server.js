@@ -49,7 +49,36 @@ app.post('/register', async (req, res) => {
 });
 
 // ... (other routes)
+app.post('/oregister', async (req, res) => {
+  try {
+    const { email, password, name, location } = req.body;
+    const hashedPassword = await bcrypt.hash(password, 15);
 
+    // If not, create a new orphanage document
+    const orphanageRecord = await admin.auth().createUser({
+      email,
+      password: hashedPassword,
+      displayName: name, // Assuming 'name' is the display name for orphanages
+    });
+
+    const orphanageUid = orphanageRecord.uid;
+
+    const orphanageData = {
+      email,
+      password: hashedPassword,
+      name,
+      location,
+      activate: false,
+    };
+
+    await admin.firestore().collection('orphanages').doc(orphanageUid).set(orphanageData);
+
+    res.json({ message: 'Orphanage registration successful', uid: orphanageUid });
+  } catch (error) {
+    console.error('Error in oregister route:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+});
 
 
   app.post('/userdetails', async (req, res) => {
@@ -199,7 +228,91 @@ app.post('/register', async (req, res) => {
     }
   });
 
-
+  // app.post('/oregister', async (req, res) => {
+  //   try {
+  //     const { email, password, name, location } = req.body;
+  //     console.log(req.body)
+  //     const hashedPassword = await bcrypt.hash(password, 15);
+  
+  //     // Create user in Firebase Authentication
+  //     const orphanageRecord = await admin.auth().createUser({
+  //       email,
+  //       password: hashedPassword,
+  //       displayName: name,
+  //     });
+  
+  //     const orphanageUid = orphanageRecord.uid;
+  
+  //     // Store orphanage data in 'orphanages' collection
+  //     const orphanageData = {
+  //       email,
+  //       password: hashedPassword,
+  //       name,
+  //       location,
+  //       activate: false,
+  //     };
+  
+  //     await admin.firestore().collection('orphanages').doc(orphanageUid).set(orphanageData);
+  
+  //     // Store user data in 'users' collection
+  //     const userData = {
+  //       email,
+  //       password: hashedPassword,
+  //       username: name,
+  //       userType: 'orphanage',
+  //       activate: false,
+  //     };
+  
+  //     await admin.firestore().collection('orphanages').doc(orphanageUid).set(userData);
+  
+  //     res.json({ message: 'Orphanage registration successful', uid: orphanageUid });
+  //   } catch (error) {
+  //     console.error('Error in oregister route:', error);
+  //     res.status(500).json({ message: 'Internal Server Error' });
+  //   }
+  // });
+  // app.post('/nregister', async (req, res) => {
+  //   try {
+  //     const { email, password, name, location } = req.body;
+  //     const hashedPassword = await bcrypt.hash(password, 15);
+  
+  //     // Create user in Firebase Authentication
+  //     const nRecord = await admin.auth().createUser({
+  //       email,
+  //       password: hashedPassword,
+  //       displayName: name,
+  //     });
+  
+  //     const nUid = nRecord.uid;
+  
+  //     // Store orphanage data in 'orphanages' collection
+  //     const orphanageData = {
+  //       email,
+  //       password: hashedPassword,
+  //       name,
+  //       location,
+  //       activate: false,
+  //     };
+  
+  //     await admin.firestore().collection('ngos').doc(nUid).set(orphanageData);
+  
+  //     // Store user data in 'users' collection
+  //     const userData = {
+  //       email,
+  //       password: hashedPassword,
+  //       username: name,
+  //       userType: 'ngo',
+  //       activate: false,
+  //     };
+  
+  //     await admin.firestore().collection('ngos').doc(nUid).set(userData);
+  
+  //     res.json({ message: 'Orphanage registration successful', uid: nUid });
+  //   } catch (error) {
+  //     console.error('Error in oregister route:', error);
+  //     res.status(500).json({ message: 'Internal Server Error' });
+  //   }
+  // });
 
   
   // app.get('/activeusers', async (req, res) => {
@@ -239,7 +352,7 @@ app.post('/register', async (req, res) => {
   
   app.post('/create-post', upload.single('image'), async (req, res) => {
     try {
-      const { uid, title, description } = req.body;
+      const { uid, title, description,location } = req.body;
       let imageUrl = null;
 
       // Check if a file is provided in the request
@@ -274,6 +387,7 @@ app.post('/register', async (req, res) => {
           ...postsArray,
           {
             uid,
+            location,
             title,
             description,
             imageUrl,
